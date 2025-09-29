@@ -115,9 +115,10 @@ void SearchAssetsGUI::render_search_panel()
         if (ImGui::IsItemHovered())
         {
             ImGui::BeginTooltip();
-            ImGui::Text("Remove Unreal Engine prefixes from results");
+            ImGui::Text("Auto remove Unreal Engine prefixes from search pattern");
             ImGui::Text("(A, U, F, S, T, E, I)");
             ImGui::Text("Example: 'AWeapon' becomes 'Weapon'");
+            ImGui::Text("This must be on if you are trying to search a class name'");
             ImGui::EndTooltip();
         }
     }
@@ -307,7 +308,6 @@ void SearchAssetsGUI::render_results_panel()
         copy_all_results();
     }
     ImGui::PopStyleColor();
-
 
     ImGui::Spacing();
 
