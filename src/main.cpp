@@ -135,7 +135,8 @@ int main()
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     std::cout << "Application started successfully!\n";
-    std::cout << "Search assets V2!\n";
+    std::cout << "Welcome to SearchAssets V2 Turbo Diesel! By Nicola L.!\n";
+    std::cout << "Have fun!\n";
 
     // Main loop
     while (!glfwWindowShouldClose(window))

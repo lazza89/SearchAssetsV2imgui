@@ -96,31 +96,38 @@ void SearchAssetsGUI::render_search_panel()
     ImGui::SetNextItemWidth(60);
     ImGui::InputTextWithHint("##MaxSize", "1000", max_file_size_str_, sizeof(max_file_size_str_));
 
-    // Checkboxes with better spacing
+    // Checkboxes - First row
     ImGui::SameLine();
-    if (ImGui::GetContentRegionAvail().x > 300) // Full layout if space available
+    ImGui::SetCursorPosX(280);
+    ImGui::Checkbox("Include Plugins", &search_plugins_);
+    if (ImGui::IsItemHovered())
     {
-        ImGui::SetCursorPosX(280);
-        ImGui::Checkbox("Include Plugins", &search_plugins_);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text("Search in plugin Content directories");
-            ImGui::Text("(e.g., Plugins/MyPlugin/Content/)");
-            ImGui::EndTooltip();
-        }
+        ImGui::BeginTooltip();
+        ImGui::Text("Search in plugin Content directories");
+        ImGui::Text("(e.g., Plugins/MyPlugin/Content/)");
+        ImGui::EndTooltip();
+    }
 
-        ImGui::SameLine();
-        ImGui::Checkbox("Remove UE Prefixes", &remove_unreal_prefixes_);
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::BeginTooltip();
-            ImGui::Text("Auto remove Unreal Engine prefixes from search pattern");
-            ImGui::Text("(A, U, F, S, T, E, I)");
-            ImGui::Text("Example: 'AWeapon' becomes 'Weapon'");
-            ImGui::Text("This must be on if you are trying to search a class name'");
-            ImGui::EndTooltip();
-        }
+    // Checkboxes - Second row
+    ImGui::Checkbox("Remove UE Prefixes", &remove_unreal_prefixes_);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("Auto remove Unreal Engine prefixes from search pattern");
+        ImGui::Text("(A, U, F, S, T, E, I)");
+        ImGui::Text("Example: 'AWeapon' becomes 'Weapon'");
+        ImGui::Text("This must be on if you are trying to search a class name");
+        ImGui::EndTooltip();
+    }
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Match Whole Word", &match_whole_word_);
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("Match only complete words");
+        ImGui::Text("Example: 'Weapon' will NOT match 'WeaponComponent'");
+        ImGui::EndTooltip();
     }
 
     // Action buttons row
@@ -406,6 +413,12 @@ void SearchAssetsGUI::perform_search()
     if (remove_unreal_prefixes_)
     {
         actual_search_pattern = remove_unreal_prefix(search_pattern_);
+    }
+
+    // Add word boundaries if match whole word is enabled
+    if (match_whole_word_)
+    {
+        actual_search_pattern = "\\b" + actual_search_pattern + "\\b";
     }
 
     reset_search();

@@ -36,6 +36,7 @@ private:
     char result_filter_[256] = "";
     bool search_plugins_ = false;
     bool remove_unreal_prefixes_ = true;
+    bool match_whole_word_ = true;
 
     // File size limits (in KB for easier UI)
     char min_file_size_str_[16] = "0.1"; // 100 bytes = 0.1 KB
