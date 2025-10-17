@@ -48,6 +48,8 @@ public:
     void set_thread_count(size_t threads) { thread_count_ = threads; }
     size_t get_thread_count() const { return thread_count_; }
 
+    void set_match_whole_word(bool match) { m_matchWholeWord = match; }
+
 private:
     void search_file(const std::filesystem::path &file_path,
                      const ResultCallback& result_cb);
@@ -68,4 +70,5 @@ private:
     size_t max_file_size_ = 1024 * 1024; // Skip files larger than 1MB
 
     std::regex compiled_pattern_; // Cached compiled regex
+    bool m_matchWholeWord = false;
 };

@@ -415,11 +415,8 @@ void SearchAssetsGUI::perform_search()
         actual_search_pattern = remove_unreal_prefix(search_pattern_);
     }
 
-    // Add word boundaries if match whole word is enabled
-    if (match_whole_word_)
-    {
-        actual_search_pattern = "\\b" + actual_search_pattern + "\\b";
-    }
+    // NON aggiungere \b qui, passa il flag invece al search engine
+    search_engine_->set_match_whole_word(match_whole_word_);
 
     reset_search();
     is_searching_ = true;

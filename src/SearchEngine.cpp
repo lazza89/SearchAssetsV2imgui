@@ -164,7 +164,49 @@ void SearchEngine::search_file(const std::filesystem::path& file_path,
         // Search in memory-mapped data (much faster than loading into string)
         std::string_view file_content(file_data, file_size);
 
-        if (std::regex_search(file_content.begin(), file_content.end(), compiled_pattern_)) {
+        // Per file binari con match whole word, usa un approccio diverso
+        bool found = false;
+
+        if (m_matchWholeWord) {
+            // Converti string_view in string per la regex con boundary check
+            // Questo è necessario perché std::smatch non funziona con iteratori di string_view
+            std::string content_str(file_content);
+            std::smatch match;
+            std::string::const_iterator search_start(content_str.cbegin());
+
+            // Helper lambda per verificare se un carattere è valido per un identificatore
+            // Include lettere, numeri, underscore e trattino (tipico dei linguaggi di programmazione e nomi di file)
+            auto is_identifier_char = [](char c) -> bool {
+                return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-';
+            };
+
+            while (std::regex_search(search_start, content_str.cend(), match, compiled_pattern_)) {
+                // Calcola la posizione nel contenuto originale
+                size_t match_pos = std::distance(content_str.cbegin(), search_start) + match.position();
+
+                // Verifica boundary all'inizio: non deve esserci un carattere identificatore prima
+                bool valid_start = (match_pos == 0) ||
+                                  !is_identifier_char(content_str[match_pos - 1]);
+
+                // Verifica boundary alla fine: non deve esserci un carattere identificatore dopo
+                size_t end_pos = match_pos + match.length();
+                bool valid_end = (end_pos >= content_str.length()) ||
+                                !is_identifier_char(content_str[end_pos]);
+
+                if (valid_start && valid_end) {
+                    found = true;
+                    break;
+                }
+
+                search_start = match.suffix().first;
+            }
+        } else {
+            // Per il caso senza matchWholeWord, converti anche qui per consistenza
+            std::string content_str(file_content);
+            found = std::regex_search(content_str, compiled_pattern_);
+        }
+
+        if (found) {
             // For binary files, we'll just report "binary content" as the line
             std::string content_preview = "Binary content match";
 
