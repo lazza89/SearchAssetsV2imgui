@@ -37,8 +37,8 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // Create windowed mode window — wide enough for the 2x2 controller grid
-    const int windowWidth = 1000, windowHeight = 900;
+    // Create windowed mode window — starts at Search Assets size; resizes on tab switch
+    const int windowWidth = 800, windowHeight = 800;
     GLFWwindow *window = glfwCreateWindow(windowWidth, windowHeight, "SearchAssets V2 + Xbox Controller", nullptr, nullptr);
     if (window == nullptr)
     {
@@ -130,7 +130,7 @@ int main()
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Create our application
-    SearchAssetsGUI app;
+    SearchAssetsGUI app(window);
 
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);

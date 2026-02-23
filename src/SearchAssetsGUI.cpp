@@ -1,5 +1,6 @@
 #include "SearchAssetsGUI.h"
 #include <imgui.h>
+#include <GLFW/glfw3.h>
 #include <thread>
 #include <filesystem>
 #include <algorithm>
@@ -12,7 +13,7 @@
 #include <sys/wait.h>
 #endif
 
-SearchAssetsGUI::SearchAssetsGUI()
+SearchAssetsGUI::SearchAssetsGUI(GLFWwindow* window) : glfw_window_(window)
 {
     search_engine_ = std::make_unique<SearchEngine>();
     // Initialize filtered results as empty
@@ -61,8 +62,12 @@ void SearchAssetsGUI::render()
     // Tab bar — Search Assets | Xbox Controller
     if (ImGui::BeginTabBar("##MainTabs"))
     {
+        static int prev_tab = -1;
+        int cur_tab = -1;
+
         if (ImGui::BeginTabItem("  Search Assets  "))
         {
+            cur_tab = 0;
             ImGui::Spacing();
             render_search_panel();
             ImGui::Separator();
@@ -72,9 +77,16 @@ void SearchAssetsGUI::render()
 
         if (ImGui::BeginTabItem("  Xbox Controller  "))
         {
+            cur_tab = 1;
             ImGui::Spacing();
             render_controller_tab();
             ImGui::EndTabItem();
+        }
+
+        if (cur_tab != -1 && cur_tab != prev_tab)
+        {
+            prev_tab = cur_tab;
+            resize_to_tab(cur_tab);
         }
 
         ImGui::EndTabBar();
@@ -757,6 +769,24 @@ std::string SearchAssetsGUI::get_clipboard()
     return text;
 }
 
+void SearchAssetsGUI::resize_to_tab(int tab)
+{
+    if (!glfw_window_) return;
+
+    int w = (tab == 0) ? 800 : 1000;
+    int h = (tab == 0) ? 800 : 900;
+
+    glfwSetWindowSize(glfw_window_, w, h);
+
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    if (monitor)
+    {
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        if (mode)
+            glfwSetWindowPos(glfw_window_, (mode->width - w) / 2, (mode->height - h) / 2);
+    }
+}
+
 void SearchAssetsGUI::render_controller_tab()
 {
     // Show a warning banner if the ViGEmBus driver is not installed
@@ -778,25 +808,27 @@ void SearchAssetsGUI::render_controller_tab()
     float colW    = (availW - spacing) * 0.5f;
     float rowH    = (availH - spacing) * 0.5f;
 
+    constexpr ImGuiWindowFlags kNoScroll = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+
     // Row 1 — Player 1 | Player 2
-    ImGui::BeginChild("##ctrl_p1", {colW, rowH}, false);
+    ImGui::BeginChild("##ctrl_p1", {colW, rowH}, false, kNoScroll);
     controller_panels_[0]->Render();
     ImGui::EndChild();
 
     ImGui::SameLine();
 
-    ImGui::BeginChild("##ctrl_p2", {colW, rowH}, false);
+    ImGui::BeginChild("##ctrl_p2", {colW, rowH}, false, kNoScroll);
     controller_panels_[1]->Render();
     ImGui::EndChild();
 
     // Row 2 — Player 3 | Player 4
-    ImGui::BeginChild("##ctrl_p3", {colW, rowH}, false);
+    ImGui::BeginChild("##ctrl_p3", {colW, rowH}, false, kNoScroll);
     controller_panels_[2]->Render();
     ImGui::EndChild();
 
     ImGui::SameLine();
 
-    ImGui::BeginChild("##ctrl_p4", {colW, rowH}, false);
+    ImGui::BeginChild("##ctrl_p4", {colW, rowH}, false, kNoScroll);
     controller_panels_[3]->Render();
     ImGui::EndChild();
 }

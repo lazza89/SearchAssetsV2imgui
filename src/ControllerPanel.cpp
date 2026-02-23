@@ -77,7 +77,7 @@ static constexpr float kRS_CY = 170.0f;
 static constexpr float kRS_R  =  35.0f;
 
 // ── Etichetta hint "(RMB=click)" ─────────────────────────────────────────────
-static constexpr float kHint_Y = 190.0f;  // posizione Y dell'etichetta
+static constexpr float kHint_Y = 115.0f;  // posizione Y dell'etichetta
 
 // =============================================================================
 // PALETTE COLORI
