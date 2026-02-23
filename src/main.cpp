@@ -37,8 +37,9 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // Create windowed mode window with compact size
-    GLFWwindow *window = glfwCreateWindow(800, 800, "Unreal Engine Search Assets V2", nullptr, nullptr);
+    // Create windowed mode window — wide enough for the 2x2 controller grid
+    const int windowWidth = 1000, windowHeight = 900;
+    GLFWwindow *window = glfwCreateWindow(windowWidth, windowHeight, "SearchAssets V2 + Xbox Controller", nullptr, nullptr);
     if (window == nullptr)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -52,7 +53,6 @@ int main()
     // Center window on screen
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-    int windowWidth = 900, windowHeight = 900;
     glfwSetWindowPos(window, (mode->width - windowWidth) / 2, (mode->height - windowHeight) / 2);
 
     glfwMakeContextCurrent(window);

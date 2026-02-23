@@ -17,6 +17,11 @@ SearchAssetsGUI::SearchAssetsGUI()
     search_engine_ = std::make_unique<SearchEngine>();
     // Initialize filtered results as empty
     filtered_result_lines_.clear();
+
+    // Initialize Xbox controller emulator and 4 panels
+    controller_emulator_ = std::make_unique<ControllerEmulator>();
+    for (int i = 0; i < 4; ++i)
+        controller_panels_[i] = std::make_unique<ControllerPanel>(i, *controller_emulator_);
 }
 
 SearchAssetsGUI::~SearchAssetsGUI()
@@ -46,19 +51,34 @@ void SearchAssetsGUI::render()
     ImGui::Begin("SearchAssets ImGui", &open, window_flags);
 
     // Welcome header
-    ImGui::PushFont(nullptr); // Use default font for title
     ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("SearchAssets V2 Turbo").x) * 0.5f);
     ImGui::TextColored(ImVec4(0.28f, 0.56f, 1.00f, 1.00f), "SearchAssets V2 Turbo");
-    ImGui::PopFont();
 
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Split layout: search panel on top, results below
-    render_search_panel();
-    ImGui::Separator();
-    render_results_panel();
+    // Tab bar — Search Assets | Xbox Controller
+    if (ImGui::BeginTabBar("##MainTabs"))
+    {
+        if (ImGui::BeginTabItem("  Search Assets  "))
+        {
+            ImGui::Spacing();
+            render_search_panel();
+            ImGui::Separator();
+            render_results_panel();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("  Xbox Controller  "))
+        {
+            ImGui::Spacing();
+            render_controller_tab();
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
+    }
 
     ImGui::End();
 }
@@ -735,4 +755,48 @@ std::string SearchAssetsGUI::get_clipboard()
     GlobalUnlock(hData);
     CloseClipboard();
     return text;
+}
+
+void SearchAssetsGUI::render_controller_tab()
+{
+    // Show a warning banner if the ViGEmBus driver is not installed
+    if (!controller_emulator_->IsDriverAvailable())
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.45f, 0.45f, 1.0f));
+        ImGui::TextWrapped("ViGEmBus driver not found!");
+        ImGui::PopStyleColor();
+        ImGui::TextWrapped("Install it from: github.com/nefarius/ViGEmBus/releases");
+        ImGui::Separator();
+        ImGui::Spacing();
+    }
+
+    // Lay out 4 panels in a 2x2 grid using child windows so each panel
+    // can compute its own scale from its available width.
+    float spacing = ImGui::GetStyle().ItemSpacing.x;
+    float availW  = ImGui::GetContentRegionAvail().x;
+    float availH  = ImGui::GetContentRegionAvail().y;
+    float colW    = (availW - spacing) * 0.5f;
+    float rowH    = (availH - spacing) * 0.5f;
+
+    // Row 1 — Player 1 | Player 2
+    ImGui::BeginChild("##ctrl_p1", {colW, rowH}, false);
+    controller_panels_[0]->Render();
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("##ctrl_p2", {colW, rowH}, false);
+    controller_panels_[1]->Render();
+    ImGui::EndChild();
+
+    // Row 2 — Player 3 | Player 4
+    ImGui::BeginChild("##ctrl_p3", {colW, rowH}, false);
+    controller_panels_[2]->Render();
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    ImGui::BeginChild("##ctrl_p4", {colW, rowH}, false);
+    controller_panels_[3]->Render();
+    ImGui::EndChild();
 }

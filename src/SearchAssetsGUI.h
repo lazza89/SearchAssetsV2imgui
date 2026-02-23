@@ -1,7 +1,10 @@
 #pragma once
 
 #include "SearchEngine.h"
+#include "ControllerEmulator.h"
+#include "ControllerPanel.h"
 #include <imgui.h>
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -19,6 +22,7 @@ public:
 private:
     void render_search_panel();
     void render_results_panel();
+    void render_controller_tab();
     void update_progress(const std::string &message, size_t current, size_t total);
     void add_result(const SearchResult &result);
     void perform_search();
@@ -58,6 +62,10 @@ private:
 
     // Search engine
     std::unique_ptr<SearchEngine> search_engine_;
+
+    // Xbox Controller
+    std::unique_ptr<ControllerEmulator>              controller_emulator_;
+    std::array<std::unique_ptr<ControllerPanel>, 4>  controller_panels_;
 
     // UI state
     ImVec4 clear_color_ = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
