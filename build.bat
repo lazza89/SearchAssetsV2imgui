@@ -1,35 +1,45 @@
 @echo off
 setlocal
 
-set MSBUILD="C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
-set SLN="%~dp0build\SearchAssetsImGui.sln"
-set CONFIG=Release
-set PLATFORM=x64
+set "ROOT=%~dp0"
+if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
+
+set "BUILD=%ROOT%\build"
+set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
+set "CONFIG=Release"
 
 echo.
 echo ============================================================
-echo  Building SearchAssetsImGui  [%CONFIG% ^| %PLATFORM%]
+echo  Configure CMake
 echo ============================================================
 echo.
 
-if not exist %SLN% (
-    echo [ERROR] Solution not found: %SLN%
-    echo Run CMake first to generate the build files.
-    pause
-    exit /b 1
-)
-
-%MSBUILD% %SLN% /p:Configuration=%CONFIG% /p:Platform=%PLATFORM% /v:minimal /m
+cmake -S "%ROOT%" -B "%BUILD%" -G "Visual Studio 17 2022" -A x64
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo [FAILED] Build exited with error %ERRORLEVEL%.
+    echo [FAILED] CMake configure failed.
+    pause
+    exit /b %ERRORLEVEL%
+)
+
+echo.
+echo ============================================================
+echo  Build  [%CONFIG% ^| x64]
+echo ============================================================
+echo.
+
+"%MSBUILD%" "%BUILD%\SearchAssetsV2.sln" /p:Configuration=%CONFIG% /p:Platform=x64 /v:minimal /m
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [FAILED] Build failed with error %ERRORLEVEL%.
     pause
     exit /b %ERRORLEVEL%
 )
 
 echo.
 echo [OK] Build succeeded.
-echo Output: %~dp0build\Release\SearchAssetsImGui.exe
+echo Output: %BUILD%\%CONFIG%\SearchAssetsV2.exe
 echo.
 pause
