@@ -29,7 +29,7 @@ echo  Build  [%CONFIG% ^| x64]
 echo ============================================================
 echo.
 
-"%MSBUILD%" "%BUILD%\SearchAssetsV2.sln" /p:Configuration=%CONFIG% /p:Platform=x64 /v:minimal /m
+"%MSBUILD%" "%BUILD%\SearchAssetsImGui.sln" /p:Configuration=%CONFIG% /p:Platform=x64 /v:minimal /m
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

@@ -135,7 +135,26 @@ ControllerPanel::ControllerPanel(int playerIndex, ControllerEmulator& emulator)
 
 void ControllerPanel::Submit()
 {
-    if (m_enabled) m_emulator.SubmitState(m_playerIndex, m_state);
+    if (!m_enabled) return;
+    m_emulator.SubmitState(m_playerIndex, m_state);
+
+    // Propagate to mirror group (skip if this call originated from a peer)
+    if (!m_fromMirror && m_mirrorGroup > 0 && m_peers) {
+        for (int i = 0; i < m_peerCount; ++i) {
+            ControllerPanel* peer = m_peers[i];
+            if (peer && peer != this && peer->m_mirrorGroup == m_mirrorGroup)
+                peer->ReceiveMirroredState(m_state);
+        }
+    }
+}
+
+void ControllerPanel::ReceiveMirroredState(const GamepadState& state)
+{
+    if (!m_enabled) return;
+    m_state = state;
+    m_fromMirror = true;
+    Submit();
+    m_fromMirror = false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -416,8 +435,8 @@ void ControllerPanel::Render()
     }
     ImGui::Dummy({ 0, 4.0f });
 
-    // Canvas
-    float  scale   = ImGui::GetContentRegionAvail().x / kCW;
+    // Canvas — fit both width and height so nothing gets clipped
+    float  scale  = ImGui::GetContentRegionAvail().x / kCW;
     ImVec2 origin  = ImGui::GetCursorScreenPos();
     float  canvasH = kCH * scale;
 

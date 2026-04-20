@@ -70,6 +70,8 @@ private:
     // Xbox Controller
     std::unique_ptr<ControllerEmulator>              controller_emulator_;
     std::array<std::unique_ptr<ControllerPanel>, 4>  controller_panels_;
+    std::array<ControllerPanel*, 4>                  controller_panel_ptrs_ = {};
+    std::array<int, 4>                               mirror_groups_ = {}; // 0=none
 
     // UI state
     ImVec4 clear_color_ = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);

@@ -23,6 +23,12 @@ SearchAssetsGUI::SearchAssetsGUI(GLFWwindow* window) : glfw_window_(window)
     controller_emulator_ = std::make_unique<ControllerEmulator>();
     for (int i = 0; i < 4; ++i)
         controller_panels_[i] = std::make_unique<ControllerPanel>(i, *controller_emulator_);
+
+    // Set up peer pointers for mirror group communication
+    for (int i = 0; i < 4; ++i)
+        controller_panel_ptrs_[i] = controller_panels_[i].get();
+    for (int i = 0; i < 4; ++i)
+        controller_panels_[i]->SetPeers(controller_panel_ptrs_.data(), 4);
 }
 
 SearchAssetsGUI::~SearchAssetsGUI()
@@ -774,7 +780,7 @@ void SearchAssetsGUI::resize_to_tab(int tab)
     if (!glfw_window_) return;
 
     int w = (tab == 0) ? 800 : 1000;
-    int h = (tab == 0) ? 800 : 900;
+    int h = (tab == 0) ? 800 : 1000;
 
     glfwSetWindowSize(glfw_window_, w, h);
 
@@ -799,6 +805,27 @@ void SearchAssetsGUI::render_controller_tab()
         ImGui::Separator();
         ImGui::Spacing();
     }
+
+    // --- Mirror Group selector ---
+    ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.2f, 1.0f), "Mirror Groups");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(same group = shared inputs)");
+
+    static const char* groupLabels[] = { "None", "Group 1", "Group 2", "Group 3" };
+    for (int i = 0; i < 4; ++i) {
+        ImGui::PushID(i + 100);
+        ImGui::Text("P%d:", i + 1);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(120);
+        if (ImGui::Combo("##mg", &mirror_groups_[i], groupLabels, IM_ARRAYSIZE(groupLabels)))
+            controller_panels_[i]->SetMirrorGroup(mirror_groups_[i]);
+        if (i < 3) ImGui::SameLine();
+        ImGui::PopID();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
 
     // Lay out 4 panels in a 2x2 grid using child windows so each panel
     // can compute its own scale from its available width.
