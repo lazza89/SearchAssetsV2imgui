@@ -37,8 +37,9 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
-    // Create windowed mode window with compact size
-    GLFWwindow *window = glfwCreateWindow(800, 800, "Unreal Engine Search Assets V2", nullptr, nullptr);
+    // Create windowed mode window — starts at Search Assets size; resizes on tab switch
+    const int windowWidth = 800, windowHeight = 800;
+    GLFWwindow *window = glfwCreateWindow(windowWidth, windowHeight, "SearchAssets V2 + Xbox Controller", nullptr, nullptr);
     if (window == nullptr)
     {
         std::cerr << "Failed to create GLFW window\n";
@@ -52,7 +53,6 @@ int main()
     // Center window on screen
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-    int windowWidth = 900, windowHeight = 900;
     glfwSetWindowPos(window, (mode->width - windowWidth) / 2, (mode->height - windowHeight) / 2);
 
     glfwMakeContextCurrent(window);
@@ -130,7 +130,7 @@ int main()
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Create our application
-    SearchAssetsGUI app;
+    SearchAssetsGUI app(window);
 
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
