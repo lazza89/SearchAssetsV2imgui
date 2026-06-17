@@ -806,6 +806,14 @@ void SearchAssetsGUI::render_controller_tab()
         ImGui::Spacing();
     }
 
+    // --- Always on top ---
+    if (ImGui::Checkbox("Always on top", &always_on_top_) && glfw_window_)
+        glfwSetWindowAttrib(glfw_window_, GLFW_FLOATING, always_on_top_ ? GLFW_TRUE : GLFW_FALSE);
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(keep window above other programs)");
+
+    ImGui::Spacing();
+
     // --- Mirror Group selector ---
     ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.2f, 1.0f), "Mirror Groups");
     ImGui::SameLine();

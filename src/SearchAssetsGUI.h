@@ -75,6 +75,7 @@ private:
 
     // UI state
     ImVec4 clear_color_ = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    bool always_on_top_ = false;   // mantiene la finestra sopra le altre
 
     // GLFW window handle (for dynamic resizing on tab switch)
     GLFWwindow* glfw_window_ = nullptr;
