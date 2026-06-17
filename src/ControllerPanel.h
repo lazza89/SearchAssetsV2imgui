@@ -55,4 +55,9 @@ private:
     ControllerPanel** m_peers      = nullptr;
     int              m_peerCount   = 0;
     bool             m_fromMirror  = false;  // prevents infinite recursion
+
+    // Rumble LED hold: mantiene il LED acceso per ~250 ms dopo l'ultimo impulso
+    float   m_rumbleHold  = 0.0f;   // secondi rimanenti
+    uint8_t m_rumbleLarge = 0;
+    uint8_t m_rumbleSmall = 0;
 };

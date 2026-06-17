@@ -12,6 +12,7 @@
 #include <ViGEm/Client.h>
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -35,6 +36,14 @@ struct GamepadState
 // Owns the ViGEmClient connection and up to 4 virtual Xbox 360 targets.
 // Each slot (0-3) can be independently connected / disconnected.
 // ---------------------------------------------------------------------------
+
+// Per-slot user data forwarded to the ViGEm vibration callback.
+struct RumbleCallbackData
+{
+    class ControllerEmulator* self  = nullptr;
+    int                       index = 0;
+};
+
 class ControllerEmulator
 {
 public:
@@ -60,10 +69,31 @@ public:
     // Push a new gamepad report to the driver.  No-op if slot is not connected.
     void SubmitState(int index, const GamepadState& state);
 
+    // Returns the last known motor intensities sent by the host application.
+    // Values are 0-255; both are 0 when the controller is idle / not connected.
+    // Returns the last non-zero motor values seen by the callback; clears them after reading.
+    // Call once per frame: if the result is non-zero a rumble event just arrived.
+    void     ConsumePeak   (int index, uint8_t& large, uint8_t& small);
+    // Total number of vibration callbacks received on this slot since last Connect().
+    uint32_t GetNotifyCount(int index) const;
+
 private:
+    static VOID CALLBACK OnX360Notification(
+        PVIGEM_CLIENT Client, PVIGEM_TARGET Target,
+        UCHAR LargeMotor, UCHAR SmallMotor,
+        UCHAR LedNumber, LPVOID UserData);
+
     PVIGEM_CLIENT                              m_client          = nullptr;
     std::array<PVIGEM_TARGET, kMaxControllers> m_targets         = {};
     std::array<bool,          kMaxControllers> m_connected       = {};
     bool                                       m_driverAvailable = false;
     std::string                                m_errorMessage;
+
+    std::array<RumbleCallbackData,    kMaxControllers> m_callbackData  = {};
+    // Peak non-zero motor values since last ConsumePeak() call.
+    // Written by the callback thread, read+cleared by the UI thread.
+    std::array<std::atomic<uint8_t>,  kMaxControllers> m_peakLarge;
+    std::array<std::atomic<uint8_t>,  kMaxControllers> m_peakSmall;
+    // Counts how many times the notification callback has fired — useful for diagnostics.
+    std::array<std::atomic<uint32_t>, kMaxControllers> m_notifyCount;
 };

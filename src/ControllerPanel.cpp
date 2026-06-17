@@ -429,6 +429,92 @@ void ControllerPanel::Render()
     dl->AddCircleFilled(dotPos, 5.0f, m_enabled ? kAccent[m_playerIndex] : IM_COL32(60,60,60,255), 16);
     ImGui::Dummy({ 14, ImGui::GetTextLineHeight() });
 
+    // Rumble bars — due barre di intensità per Large Motor (L) e Small Motor (S)
+    {
+        uint8_t large = 0, small = 0;
+        if (m_enabled)
+            m_emulator.ConsumePeak(m_playerIndex, large, small);
+
+        // Hold timer: 2 secondi di visibilità con fade graduale
+        // NOTA: non ripristinare large/small dal hold — il fade dipende SOLO da m_rumbleHold
+        const float kHoldSec = 2.0f;
+        if (large > 0 || small > 0) {
+            m_rumbleHold  = kHoldSec;
+            m_rumbleLarge = large;
+            m_rumbleSmall = small;
+        } else if (m_rumbleHold > 0.0f) {
+            m_rumbleHold = std::max(0.0f, m_rumbleHold - ImGui::GetIO().DeltaTime);
+        }
+
+        // holdRatio va da 1.0 (appena vibrato) a 0.0 (spento)
+        float holdRatio = m_rumbleHold / kHoldSec;
+
+        // Shimmer pulsante nella prima metà del hold (fase "caldo")
+        float shimmer = (holdRatio > 0.5f)
+            ? 1.0f + 0.18f * sinf(static_cast<float>(ImGui::GetTime()) * 22.0f)
+            : 1.0f;
+
+        float fL = std::min(1.0f, (m_rumbleLarge / 255.0f) * holdRatio * shimmer);
+        float fS = std::min(1.0f, (m_rumbleSmall / 255.0f) * holdRatio * shimmer);
+
+        ImGui::SameLine();
+        const float lineH = ImGui::GetTextLineHeight();
+        const float barW  = 32.0f;
+        const float barH  = 9.0f;
+        const float gap   = 4.0f;
+        ImVec2      cur   = ImGui::GetCursorScreenPos();
+
+        auto drawBar = [&](float x, float fill, ImU32 colFill, ImU32 colGlow, ImU32 colBorder)
+        {
+            float y = cur.y + (lineH - barH) * 0.5f;
+            dl->AddRectFilled({ x, y }, { x + barW, y + barH },
+                              IM_COL32(25, 15, 0, 255), 2.5f);
+            if (fill > 0.005f) {
+                float fw = barW * fill;
+                dl->AddRectFilled({ x, y }, { x + fw, y + barH }, colFill, 2.5f);
+                // glow sopra la barra
+                dl->AddRectFilled({ x, y }, { x + fw, y + barH * 0.45f },
+                                  colGlow, 2.5f);
+            }
+            dl->AddRect({ x, y }, { x + barW, y + barH }, colBorder, 2.5f, 0, 0.9f);
+        };
+
+        // Etichette "L" e "S"
+        ImVec2 tsL = ImGui::CalcTextSize("L");
+        ImVec2 tsS = ImGui::CalcTextSize("S");
+        float  ty  = cur.y + (lineH - tsL.y) * 0.5f;
+
+        int aL = (int)(255 * std::min(1.0f, holdRatio * 2.0f));  // label alpha
+        int aS = aL;
+
+        float xL = cur.x;
+        dl->AddText({ xL, ty }, IM_COL32(215, 215, 215, aL), "L");
+        xL += tsL.x + 2.0f;
+        drawBar(xL, fL,
+                IM_COL32((int)(228 * holdRatio), (int)(82  * holdRatio), 0, 255),
+                IM_COL32(255, 200, 100, (int)(80 * holdRatio)),
+                IM_COL32(90, 50, 0, 200));
+
+        float xS = xL + barW + gap;
+        dl->AddText({ xS, ty }, IM_COL32(215, 215, 215, aS), "S");
+        xS += tsS.x + 2.0f;
+        drawBar(xS, fS,
+                IM_COL32((int)(200 * holdRatio), (int)(180 * holdRatio), 0, 255),
+                IM_COL32(255, 240, 140, (int)(80 * holdRatio)),
+                IM_COL32(80, 70, 0, 200));
+
+        float totalW = xS + barW - cur.x;
+        ImGui::Dummy({ totalW, lineH });
+
+        // Tooltip con valori raw + contatore callback (diagnostica)
+        if (ImGui::IsItemHovered()) {
+            uint32_t hits = m_emulator.GetNotifyCount(m_playerIndex);
+            ImGui::SetTooltip("Vibration  L: %d  S: %d\nCallback hits: %u%s",
+                              (int)m_rumbleLarge, (int)m_rumbleSmall, hits,
+                              hits == 0 ? "\n(no callbacks received yet)" : "");
+        }
+    }
+
     {
         ImVec2 lp = ImGui::GetCursorScreenPos();
         dl->AddLine(lp, { lp.x + ImGui::GetContentRegionAvail().x, lp.y }, kAccent[m_playerIndex], 2.0f);
