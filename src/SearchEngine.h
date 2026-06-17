@@ -69,6 +69,11 @@ private:
     size_t min_file_size_ = 100;         // Skip files smaller than 100 bytes
     size_t max_file_size_ = 1024 * 1024; // Skip files larger than 1MB
 
-    std::regex compiled_pattern_; // Cached compiled regex
+    std::regex compiled_pattern_; // Cached compiled regex (solo per pattern non letterali)
     bool m_matchWholeWord = false;
+
+    // Fast-path letterale: se il pattern non contiene metacaratteri regex,
+    // si usa una ricerca substring case-insensitive (molto più veloce di std::regex).
+    bool        m_isLiteral = false;
+    std::string m_literalLower; // pattern in minuscolo per il confronto case-insensitive
 };

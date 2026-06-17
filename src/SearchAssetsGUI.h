@@ -56,6 +56,7 @@ private:
     std::string progress_message_;
     std::atomic<size_t> progress_current_{0};
     std::atomic<size_t> progress_total_{0};
+    std::atomic<long long> last_search_ms_{-1}; // durata ultima ricerca (-1 = nessuna)
 
     // Results
     mutable std::mutex results_mutex_;

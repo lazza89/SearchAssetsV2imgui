@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <sstream>
+#include <chrono>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -300,6 +301,13 @@ void SearchAssetsGUI::render_results_panel()
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), " : No results");
     }
 
+    // Tempo dell'ultima ricerca completata
+    if (!is_searching_ && last_search_ms_.load() >= 0)
+    {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.5f, 0.7f, 1.0f, 1.0f), "  (%lld ms)", last_search_ms_.load());
+    }
+
     // Show status message to the right (copy all success or search warning)
     std::string status_message = "";
     ImVec4 status_color = ImVec4(0.0f, 0.9f, 0.0f, 1.0f); // Default green
@@ -519,6 +527,7 @@ void SearchAssetsGUI::perform_search()
     // Start search in separate thread
     std::thread search_thread([this, search_paths, actual_search_pattern]()
                               {
+        auto t0 = std::chrono::steady_clock::now();
         search_engine_->search(
             actual_search_pattern,
             search_paths,
@@ -529,6 +538,8 @@ void SearchAssetsGUI::perform_search()
                 add_result(result);
             }
         );
+        auto t1 = std::chrono::steady_clock::now();
+        last_search_ms_ = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
         is_searching_ = false; });
     search_thread.detach();
 }
@@ -555,6 +566,7 @@ void SearchAssetsGUI::reset_search()
     progress_message_ = "";
     progress_current_ = 0;
     progress_total_ = 0;
+    last_search_ms_ = -1;
     is_searching_ = false;
 }
 

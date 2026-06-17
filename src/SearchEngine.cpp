@@ -5,6 +5,32 @@
 #include <algorithm>
 #include <numeric>
 #include <queue>
+#include <cctype>
+
+// Un pattern è "letterale" se non contiene metacaratteri regex: in tal caso
+// possiamo cercarlo come semplice substring, evitando del tutto std::regex.
+static bool is_literal_pattern(const std::string& p)
+{
+    if (p.empty()) return false; // pattern vuoto: lascia gestire a regex
+    for (char c : p) {
+        switch (c) {
+            case '.': case '*': case '+': case '?':
+            case '[': case ']': case '(': case ')':
+            case '{': case '}': case '|': case '\\':
+            case '^': case '$':
+                return false;
+        }
+    }
+    return true;
+}
+
+static std::string to_lower_copy(const std::string& s)
+{
+    std::string out(s);
+    std::transform(out.begin(), out.end(), out.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return out;
+}
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -39,8 +65,14 @@ void SearchEngine::search(const std::string& search_pattern,
     clear_results();
 
     try {
-        // Use case insensitive regex
-        compiled_pattern_ = std::regex(search_pattern, std::regex_constants::icase);
+        // Fast-path: pattern letterale → ricerca substring, niente regex.
+        m_isLiteral = is_literal_pattern(search_pattern);
+        if (m_isLiteral) {
+            m_literalLower = to_lower_copy(search_pattern);
+        } else {
+            // Use case insensitive regex
+            compiled_pattern_ = std::regex(search_pattern, std::regex_constants::icase);
+        }
         std::vector<std::future<void>> futures;
 
         for (const auto& path : search_paths) {
@@ -167,43 +199,58 @@ void SearchEngine::search_file(const std::filesystem::path& file_path,
         // Per file binari con match whole word, usa un approccio diverso
         bool found = false;
 
-        if (m_matchWholeWord) {
-            // Converti string_view in string per la regex con boundary check
-            // Questo è necessario perché std::smatch non funziona con iteratori di string_view
-            std::string content_str(file_content);
-            std::smatch match;
-            std::string::const_iterator search_start(content_str.cbegin());
+        // Cerca direttamente sui dati mmap (const char*) senza copiare il file.
+        const char* const data_begin = file_data;
+        const char* const data_end   = file_data + file_size;
 
-            // Helper lambda per verificare se un carattere è valido per un identificatore
-            // Include lettere, numeri, underscore e trattino (tipico dei linguaggi di programmazione e nomi di file)
-            auto is_identifier_char = [](char c) -> bool {
-                return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-';
-            };
+        // Carattere valido per un identificatore (per il controllo whole-word):
+        // lettere, numeri, underscore e trattino.
+        auto is_identifier_char = [](char c) -> bool {
+            return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '-';
+        };
 
-            while (std::regex_search(search_start, content_str.cend(), match, compiled_pattern_)) {
-                // Calcola la posizione nel contenuto originale
-                size_t match_pos = std::distance(content_str.cbegin(), search_start) + match.position();
+        if (m_isLiteral) {
+            // ---- FAST-PATH: ricerca substring case-insensitive sul buffer mmap ----
+            const std::string& needle = m_literalLower;
+            if (!needle.empty()) {
+                auto ci_eq = [](char a, char b) {
+                    // b (needle) è già minuscolo; confronta a minuscolo con b
+                    return std::tolower(static_cast<unsigned char>(a)) ==
+                           static_cast<unsigned char>(b);
+                };
 
-                // Verifica boundary all'inizio: non deve esserci un carattere identificatore prima
-                bool valid_start = (match_pos == 0) ||
-                                  !is_identifier_char(content_str[match_pos - 1]);
+                const char* pos = data_begin;
+                while ((pos = std::search(pos, data_end,
+                                          needle.begin(), needle.end(), ci_eq)) != data_end) {
+                    if (!m_matchWholeWord) { found = true; break; }
 
-                // Verifica boundary alla fine: non deve esserci un carattere identificatore dopo
-                size_t end_pos = match_pos + match.length();
-                bool valid_end = (end_pos >= content_str.length()) ||
-                                !is_identifier_char(content_str[end_pos]);
-
-                if (valid_start && valid_end) {
-                    found = true;
-                    break;
+                    size_t match_pos = static_cast<size_t>(pos - data_begin);
+                    size_t end_pos   = match_pos + needle.size();
+                    bool valid_start = (match_pos == 0) ||
+                                       !is_identifier_char(file_content[match_pos - 1]);
+                    bool valid_end   = (end_pos >= file_content.length()) ||
+                                       !is_identifier_char(file_content[end_pos]);
+                    if (valid_start && valid_end) { found = true; break; }
+                    ++pos; // avanza per cercare l'occorrenza successiva
                 }
-
+            }
+        } else if (m_matchWholeWord) {
+            // ---- Regex con controllo whole-word, direttamente sul buffer mmap ----
+            std::cmatch match;
+            const char* search_start = data_begin;
+            while (std::regex_search(search_start, data_end, match, compiled_pattern_)) {
+                size_t match_pos = (search_start - data_begin) + match.position();
+                bool valid_start = (match_pos == 0) ||
+                                  !is_identifier_char(file_content[match_pos - 1]);
+                size_t end_pos = match_pos + match.length();
+                bool valid_end = (end_pos >= file_content.length()) ||
+                                !is_identifier_char(file_content[end_pos]);
+                if (valid_start && valid_end) { found = true; break; }
                 search_start = match.suffix().first;
             }
         } else {
-            // Per il caso senza matchWholeWord, converti anche qui per consistenza
-            std::string content_str(file_content);
-            found = std::regex_search(content_str, compiled_pattern_);
+            // ---- Regex semplice ----
+            found = std::regex_search(data_begin, data_end, compiled_pattern_);
         }
 
         if (found) {
