@@ -61,6 +61,14 @@ void SearchAssetsGUI::render()
     ImGui::SetCursorPosX((ImGui::GetWindowSize().x - ImGui::CalcTextSize("SearchAssets V2 Turbo").x) * 0.5f);
     ImGui::TextColored(ImVec4(0.28f, 0.56f, 1.00f, 1.00f), "SearchAssets V2 Turbo");
 
+    // Always-on-top toggle, allineato a destra sulla stessa riga del titolo
+    ImGui::SameLine();
+    float cb_w = ImGui::CalcTextSize("Always on top").x + ImGui::GetFrameHeight() +
+                 ImGui::GetStyle().ItemInnerSpacing.x;
+    ImGui::SetCursorPosX(ImGui::GetWindowSize().x - cb_w - ImGui::GetStyle().WindowPadding.x);
+    if (ImGui::Checkbox("Always on top", &always_on_top_) && glfw_window_)
+        glfwSetWindowAttrib(glfw_window_, GLFW_FLOATING, always_on_top_ ? GLFW_TRUE : GLFW_FALSE);
+
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Spacing();
@@ -537,6 +545,7 @@ void SearchAssetsGUI::reset_search()
         std::lock_guard<std::mutex> lock(results_mutex_);
         result_lines_.clear();
         filtered_result_lines_.clear();
+        seen_filenames_.clear();
         selected_result_ = 0;
     }
 
@@ -563,14 +572,16 @@ void SearchAssetsGUI::add_result(const SearchResult &result)
     // Show only the filename (without path)
     std::string filename = result.file_path.filename().string();
 
-    // Check if filename already exists in results to avoid duplicates
-    if (std::find(result_lines_.begin(), result_lines_.end(), filename) == result_lines_.end())
+    // Check if filename already exists in results to avoid duplicates (O(1))
+    if (seen_filenames_.insert(filename).second)
     {
         result_lines_.push_back(filename);
-        // Update filtered results inline to avoid double locking
+        // Update filtered results inline to avoid double locking.
+        // Append solo il nuovo elemento: copiare tutto il vettore ad ogni
+        // risultato renderebbe add_result O(N^2) sul totale dei match.
         if (strlen(result_filter_) == 0)
         {
-            filtered_result_lines_ = result_lines_;
+            filtered_result_lines_.push_back(filename);
         }
         else
         {
@@ -805,14 +816,6 @@ void SearchAssetsGUI::render_controller_tab()
         ImGui::Separator();
         ImGui::Spacing();
     }
-
-    // --- Always on top ---
-    if (ImGui::Checkbox("Always on top", &always_on_top_) && glfw_window_)
-        glfwSetWindowAttrib(glfw_window_, GLFW_FLOATING, always_on_top_ ? GLFW_TRUE : GLFW_FALSE);
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "(keep window above other programs)");
-
-    ImGui::Spacing();
 
     // --- Mirror Group selector ---
     ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.2f, 1.0f), "Mirror Groups");

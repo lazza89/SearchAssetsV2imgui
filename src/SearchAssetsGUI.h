@@ -10,6 +10,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <unordered_set>
 
 // Forward declaration — evita di includere GLFW nell'header
 struct GLFWwindow;
@@ -48,7 +49,7 @@ private:
 
     // File size limits (in KB for easier UI)
     char min_file_size_str_[16] = "0.1"; // 100 bytes = 0.1 KB
-    char max_file_size_str_[16] = "1000";
+    char max_file_size_str_[16] = "2000";
 
     // Search state
     std::atomic<bool> is_searching_{false};
@@ -60,6 +61,7 @@ private:
     mutable std::mutex results_mutex_;
     std::vector<std::string> result_lines_;
     std::vector<std::string> filtered_result_lines_;
+    std::unordered_set<std::string> seen_filenames_; // dedup O(1) durante la ricerca
     int selected_result_ = 0;
     std::string last_copied_item_;
     std::string last_single_copied_item_; // For tooltip feedback

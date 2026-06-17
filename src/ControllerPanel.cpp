@@ -79,6 +79,16 @@ static constexpr float kRS_R  =  35.0f;
 // ── Etichetta hint "(RMB=click)" ─────────────────────────────────────────────
 static constexpr float kHint_Y = 115.0f;  // posizione Y dell'etichetta
 
+// ── Barre Rumble (intensità motori L/S) ──────────────────────────────────────
+// Disegnate nell'header in PIXEL REALI (non scalati col canvas).
+// Modifica questi valori per spostare/ridimensionare le barre.
+static constexpr float kRumble_BarW   = 100.0f; // larghezza di ogni barra
+static constexpr float kRumble_BarH   =  30.0f; // altezza di ogni barra
+static constexpr float kRumble_Gap    =  10.0f; // spazio tra barra L e barra S
+static constexpr float kRumble_AlignX =   0.5f; // 0=sinistra, 0.5=centro, 1=destra
+static constexpr float kRumble_OffX   =   0.0f; // spostamento orizzontale fine (px)
+static constexpr float kRumble_OffY   =   0.0f; // spostamento verticale fine (px)
+
 // =============================================================================
 // PALETTE COLORI
 // =============================================================================
@@ -459,14 +469,25 @@ void ControllerPanel::Render()
 
         ImGui::SameLine();
         const float lineH = ImGui::GetTextLineHeight();
-        const float barW  = 32.0f;
-        const float barH  = 9.0f;
-        const float gap   = 4.0f;
+        const float barW  = kRumble_BarW;
+        const float barH  = kRumble_BarH;
+        const float gap   = kRumble_Gap;
+        const float rowH  = std::max(lineH, barH);   // riga abbastanza alta da contenere le barre
         ImVec2      cur   = ImGui::GetCursorScreenPos();
+
+        // Etichette "L" e "S"
+        ImVec2 tsL = ImGui::CalcTextSize("L");
+        ImVec2 tsS = ImGui::CalcTextSize("S");
+
+        // Larghezza totale del blocco (etichette + barre) per allineamento
+        const float blockW = tsL.x + 2.0f + barW + gap + tsS.x + 2.0f + barW;
+        const float availW = ImGui::GetContentRegionAvail().x;
+        const float baseX  = cur.x + std::max(0.0f, (availW - blockW) * kRumble_AlignX) + kRumble_OffX;
+        const float baseY  = cur.y + kRumble_OffY;
 
         auto drawBar = [&](float x, float fill, ImU32 colFill, ImU32 colGlow, ImU32 colBorder)
         {
-            float y = cur.y + (lineH - barH) * 0.5f;
+            float y = baseY + (rowH - barH) * 0.5f;
             dl->AddRectFilled({ x, y }, { x + barW, y + barH },
                               IM_COL32(25, 15, 0, 255), 2.5f);
             if (fill > 0.005f) {
@@ -479,15 +500,12 @@ void ControllerPanel::Render()
             dl->AddRect({ x, y }, { x + barW, y + barH }, colBorder, 2.5f, 0, 0.9f);
         };
 
-        // Etichette "L" e "S"
-        ImVec2 tsL = ImGui::CalcTextSize("L");
-        ImVec2 tsS = ImGui::CalcTextSize("S");
-        float  ty  = cur.y + (lineH - tsL.y) * 0.5f;
+        float ty = baseY + (rowH - tsL.y) * 0.5f;
 
         int aL = (int)(255 * std::min(1.0f, holdRatio * 2.0f));  // label alpha
         int aS = aL;
 
-        float xL = cur.x;
+        float xL = baseX;
         dl->AddText({ xL, ty }, IM_COL32(215, 215, 215, aL), "L");
         xL += tsL.x + 2.0f;
         drawBar(xL, fL,
@@ -503,8 +521,8 @@ void ControllerPanel::Render()
                 IM_COL32(255, 240, 140, (int)(80 * holdRatio)),
                 IM_COL32(80, 70, 0, 200));
 
-        float totalW = xS + barW - cur.x;
-        ImGui::Dummy({ totalW, lineH });
+        // Riserva lo spazio dell'intera riga header (da cur.x fino a fine blocco)
+        ImGui::Dummy({ (xS + barW) - cur.x, rowH });
 
         // Tooltip con valori raw + contatore callback (diagnostica)
         if (ImGui::IsItemHovered()) {
